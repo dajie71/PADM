@@ -1,9 +1,9 @@
-# app.py
+# PADMapp.py
 import streamlit as st
 import pandas as pd
 import numpy as np
 import joblib
-from io import BytesIO
+import os
 
 # Configure page
 st.set_page_config(
@@ -12,7 +12,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# Custom CSS for better styling
+# Custom CSS
 st.markdown("""
 <style>
     .main-header {
@@ -41,12 +41,6 @@ st.markdown("""
         padding: 10px;
         border-radius: 5px;
         border-left: 5px solid #dc3545;
-    }
-    .input-section {
-        background-color: #f8f9fa;
-        padding: 20px;
-        border-radius: 10px;
-        margin-bottom: 20px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -88,56 +82,51 @@ def main():
     # Load model
     model_info = load_model()
     if model_info is None:
-        st.error("Failed to load the prediction model. Please ensure PADM_model.pkl exists.")
+        st.error("Failed to load the prediction model. Please ensure PADM_model.pkl exists in the repository.")
         return
     
     # Input section
     st.markdown("### Patient Information Input")
     
-    with st.container():
-        st.markdown('<div class="input-section">', unsafe_allow_html=True)
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        PT = st.number_input(
+            "PT (s)",
+            min_value=0.0,
+            max_value=100.0,
+            value=12.0,
+            step=0.1,
+            help="Prothrombin Time in seconds"
+        )
         
-        col1, col2 = st.columns(2)
+        D_Dimer = st.number_input(
+            "D-Dimer (mg/L)",
+            min_value=0.0,
+            max_value=50.0,
+            value=0.5,
+            step=0.1,
+            help="D-Dimer concentration in mg/L"
+        )
+    
+    with col2:
+        APTT = st.number_input(
+            "APTT (s)",
+            min_value=0.0,
+            max_value=200.0,
+            value=30.0,
+            step=0.1,
+            help="Activated Partial Thromboplastin Time in seconds"
+        )
         
-        with col1:
-            PT = st.number_input(
-                "PT (s)",
-                min_value=0.0,
-                max_value=100.0,
-                value=12.0,
-                step=0.1,
-                help="Prothrombin Time in seconds"
-            )
-            
-            D_Dimer = st.number_input(
-                "D-Dimer (mg/L)",
-                min_value=0.0,
-                max_value=50.0,
-                value=0.5,
-                step=0.1,
-                help="D-Dimer concentration in mg/L"
-            )
-        
-        with col2:
-            APTT = st.number_input(
-                "APTT (s)",
-                min_value=0.0,
-                max_value=200.0,
-                value=30.0,
-                step=0.1,
-                help="Activated Partial Thromboplastin Time in seconds"
-            )
-            
-            MPV = st.number_input(
-                "MPV (fL)",
-                min_value=0.0,
-                max_value=20.0,
-                value=10.0,
-                step=0.1,
-                help="Mean Platelet Volume in femtoliters"
-            )
-        
-        st.markdown('</div>', unsafe_allow_html=True)
+        MPV = st.number_input(
+            "MPV (fL)",
+            min_value=0.0,
+            max_value=20.0,
+            value=10.0,
+            step=0.1,
+            help="Mean Platelet Volume in femtoliters"
+        )
     
     # Prediction button
     if st.button("Predict DIC Risk", type="primary"):
@@ -159,7 +148,7 @@ def main():
             # Risk level
             risk_level, risk_class = get_risk_level(probability, model_info['risk_thresholds'])
             
-            # Probability gauge
+            # Probability
             st.metric(
                 label="DIC Probability",
                 value=f"{probability:.3f}",
@@ -177,46 +166,6 @@ def main():
             - **Medium Risk**: 0.222 ≤ Probability ≤ 0.640  
             - **High Risk**: Probability > 0.640
             """)
-            
-            # Threshold visualization
-            thresholds = model_info['risk_thresholds']
-            st.markdown("#### Probability Scale")
-            
-            # Create a simple bar visualization
-            low_width = thresholds[0] * 100
-            medium_width = (thresholds[1] - thresholds[0]) * 100
-            high_width = (1 - thresholds[1]) * 100
-            
-            col_low, col_medium, col_high = st.columns(3)
-            
-            with col_low:
-                st.markdown(f"**Low Risk**\n\n< 0.222", unsafe_allow_html=True)
-            with col_medium:
-                st.markdown(f"**Medium Risk**\n\n0.222 - 0.640", unsafe_allow_html=True)
-            with col_high:
-                st.markdown(f"**High Risk**\n\n> 0.640", unsafe_allow_html=True)
-    
-    # Model information
-    with st.expander("About PADM Model"):
-        st.markdown("""
-        **PADM Prediction Model**
-        
-        This model predicts the risk of Disseminated Intravascular Coagulation (DIC) 
-        using four key laboratory parameters:
-        
-        - **PT** (Prothrombin Time) - seconds
-        - **APTT** (Activated Partial Thromboplastin Time) - seconds  
-        - **D-Dimer** - mg/L
-        - **MPV** (Mean Platelet Volume) - fL
-        
-        The model uses isotonic calibration for improved probability estimation.
-        Risk stratification is based on validated clinical thresholds.
-        """)
-        
-        st.markdown("**Units:**")
-        st.markdown("- PT, APTT: seconds (s)")
-        st.markdown("- D-Dimer: milligrams per liter (mg/L)")
-        st.markdown("- MPV: femtoliters (fL)")
 
 if __name__ == "__main__":
     main()
